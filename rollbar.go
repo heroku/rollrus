@@ -14,14 +14,14 @@ var levelToRollbar = map[log.Level]string{
 }
 
 type Hook struct {
-	client rollbar.Client
+	Client rollbar.Client
 }
 
 func (r *Hook) Fire(entry *log.Entry) error {
 	if level, exists := levelToRollbar[entry.Level]; !exists {
-		r.client.Error(rollbar.ERR, fmt.Errorf(entry.Message))
+		r.Client.Error(rollbar.ERR, fmt.Errorf(entry.Message))
 	} else {
-		r.client.Error(level, fmt.Errorf(entry.Message))
+		r.Client.Error(level, fmt.Errorf(entry.Message))
 	}
 
 	return nil

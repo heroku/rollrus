@@ -3,7 +3,7 @@
 ```go
 logrus.AddHook(
   &rollrus.Hook{
-    client: ...A Rollbar client...,
+    Client: ...A Rollbar client...,
   },
 )
 ```
