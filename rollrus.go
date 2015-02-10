@@ -37,6 +37,14 @@ func (r *Hook) Fire(entry *log.Entry) (err error) {
 	return err
 }
 
+func (r *Hook) Levels() []log.Level {
+	return []log.Level{
+		log.ErrorLevel,
+		log.FatalLevel,
+		log.PanicLevel,
+	}
+}
+
 func convertFields(fields log.Fields) map[string]string {
 	m := make(map[string]string)
 	for k, v := range fields {
