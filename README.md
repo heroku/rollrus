@@ -3,9 +3,7 @@
 ```go
 logrus.AddHook(
   &rollrus.Hook{
-    Client: ...A Rollbar client...,
+    Client: ...A github.com/stvp/roll Client ...
   },
 )
 ```
-
-Note: Uses github.com/heroku/rollbar, not github.com/stvp/rollbar
