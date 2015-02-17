@@ -2,16 +2,33 @@ package rollrus
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/stvp/roll"
 )
 
+// Hook wrapper for the rollbar Client
+// May be used as a rollbar client itself
 type Hook struct {
-	Client roll.Client
+	roll.Client
 }
 
+// ReportPanic attempts to report the panic to rollbar using the provided
+// client and then re-panic. If it can't report the panic it will print an
+// error to stderr.
+func (r *Hook) ReportPanic() {
+	if p := recover(); p != nil {
+		if _, err := r.Client.Critical(fmt.Errorf("panic: %q", p), nil); err != nil {
+			fmt.Fprintf(os.Stderr, "reporting_panic=false err=%q\n", err)
+		}
+		panic(p)
+	}
+}
+
+// Fire the hook. This is called by Logrus for entries that match the levels
+// returned by Levels(). See below.
 func (r *Hook) Fire(entry *log.Entry) (err error) {
 	e := fmt.Errorf(entry.Message)
 	m := convertFields(entry.Data)
@@ -37,6 +54,7 @@ func (r *Hook) Fire(entry *log.Entry) (err error) {
 	return err
 }
 
+// Levels returns the logrus log levels that this hook handles
 func (r *Hook) Levels() []log.Level {
 	return []log.Level{
 		log.ErrorLevel,
@@ -45,6 +63,8 @@ func (r *Hook) Levels() []log.Level {
 	}
 }
 
+// convertFields converts from log.Fields to map[string]string so that we can
+// report extra fields to Rollbar
 func convertFields(fields log.Fields) map[string]string {
 	m := make(map[string]string)
 	for k, v := range fields {
