@@ -15,6 +15,17 @@ type Hook struct {
 	roll.Client
 }
 
+// SetupLogging sets up logging. if token is not and empty string a rollbar
+// hook is added with the environment set to env. The log formatter is set to a
+// TextFormatter with timestamps disabled, which is suitable for use on Heroku.
+func SetupLogging(token, env string) {
+	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
+
+	if token != "" {
+		log.AddHook(&Hook{Client: roll.New(token, env)})
+	}
+}
+
 // ReportPanic attempts to report the panic to rollbar using the provided
 // client and then re-panic. If it can't report the panic it will print an
 // error to stderr.
