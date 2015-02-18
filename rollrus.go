@@ -38,6 +38,14 @@ func (r *Hook) ReportPanic() {
 	}
 }
 
+// ReportPanic attempts to report the panic to rollbar if the token is set
+func ReportPanic(token, env string) {
+	if token != "" {
+		h := &Hook{Client: roll.New(token, env)}
+		h.ReportPanic()
+	}
+}
+
 // Fire the hook. This is called by Logrus for entries that match the levels
 // returned by Levels(). See below.
 func (r *Hook) Fire(entry *log.Entry) (err error) {
