@@ -2,10 +2,12 @@ package rollrus
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/stvp/roll"
 )
 
 func TestIntConversion(t *testing.T) {
@@ -70,5 +72,19 @@ func TestTimeConversion(t *testing.T) {
 
 	if v != now.Format(time.RFC3339) {
 		t.Fatal("Expected value to equal, but instead it is: ", v)
+	}
+}
+
+func TestTriggerLevels(t *testing.T) {
+	client := roll.New("foobar", "testing")
+	underTest := &Hook{Client: client}
+	if !reflect.DeepEqual(underTest.Levels(), defaultTriggerLevels) {
+		t.Fatal("Expected Levels() to return defaultTriggerLevels")
+	}
+
+	newLevels := []log.Level{log.InfoLevel}
+	underTest.triggerLevels = newLevels
+	if !reflect.DeepEqual(underTest.Levels(), newLevels) {
+		t.Fatal("Expected Levels() to return newLevels")
 	}
 }
