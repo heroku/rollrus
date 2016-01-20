@@ -9,20 +9,42 @@ import (
 	"github.com/stvp/roll"
 )
 
+var defaultFiredLevels = []log.Level{
+	log.ErrorLevel,
+	log.FatalLevel,
+	log.PanicLevel,
+}
+
 // Hook wrapper for the rollbar Client
 // May be used as a rollbar client itself
 type Hook struct {
 	roll.Client
+	firedLevels []log.Level
 }
 
 // SetupLogging sets up logging. if token is not and empty string a rollbar
 // hook is added with the environment set to env. The log formatter is set to a
 // TextFormatter with timestamps disabled, which is suitable for use on Heroku.
 func SetupLogging(token, env string) {
+	setupLogging(token, env, defaultFiredLevels)
+}
+
+// SetupLoggingForLevels sets up logging. if token is not and empty
+// string a rollbar hook is added with the environment set to env. The
+// log formatter is set to a TextFormatter with timestamps disabled,
+// which is suitable for use on Heroku.
+//
+// In addition, this function takes an additional argument which is the levels
+// that the hook should fire on.
+func SetupLoggingForLevels(token, env string, levels []log.Level) {
+	setupLogging(token, env, levels)
+}
+
+func setupLogging(token, env string, levels []log.Level) {
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if token != "" {
-		log.AddHook(&Hook{Client: roll.New(token, env)})
+		log.AddHook(&Hook{Client: roll.New(token, env), firedLevels: levels})
 	}
 }
 
@@ -75,11 +97,10 @@ func (r *Hook) Fire(entry *log.Entry) (err error) {
 
 // Levels returns the logrus log levels that this hook handles
 func (r *Hook) Levels() []log.Level {
-	return []log.Level{
-		log.ErrorLevel,
-		log.FatalLevel,
-		log.PanicLevel,
+	if r.firedLevels == nil {
+		return defaultFiredLevels
 	}
+	return r.firedLevels
 }
 
 // convertFields converts from log.Fields to map[string]string so that we can

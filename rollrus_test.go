@@ -6,6 +6,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/stvp/roll"
 )
 
 func TestIntConversion(t *testing.T) {
@@ -70,5 +71,28 @@ func TestTimeConversion(t *testing.T) {
 
 	if v != now.Format(time.RFC3339) {
 		t.Fatal("Expected value to equal, but instead it is: ", v)
+	}
+}
+
+func TestFiredLevels(t *testing.T) {
+	client := roll.New("foobar", "testing")
+	underTest := &Hook{Client: client}
+
+	found := underTest.Levels()
+	if len(found) != len(defaultFiredLevels) {
+		t.Fatalf("Expected Levels() to return %d levels, found %d", len(defaultFiredLevels), len(found))
+	}
+
+	for i := 0; i < len(defaultFiredLevels); i++ {
+		if found[i] != defaultFiredLevels[i] {
+			t.Fatal("Expected Levels() to return defaultFiredLevels")
+		}
+	}
+
+	underTest.firedLevels = []log.Level{log.InfoLevel}
+
+	found = underTest.Levels()
+	if len(found) != 1 || found[0] != log.InfoLevel {
+		t.Fatal("Expected Levels() to return a single log.Info")
 	}
 }
