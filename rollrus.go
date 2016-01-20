@@ -19,7 +19,7 @@ var defaultTriggerLevels = []log.Level{
 // May be used as a rollbar client itself
 type Hook struct {
 	roll.Client
-	triggerLevels []log.Level
+	triggers []log.Level
 }
 
 // SetupLogging sets up logging. If token is not an empty string a rollbar
@@ -39,7 +39,7 @@ func setupLogging(token, env string, levels []log.Level) {
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if token != "" {
-		log.AddHook(&Hook{Client: roll.New(token, env), triggerLevels: levels})
+		log.AddHook(&Hook{Client: roll.New(token, env), triggers: levels})
 	}
 }
 
@@ -92,10 +92,10 @@ func (r *Hook) Fire(entry *log.Entry) (err error) {
 
 // Levels returns the logrus log levels that this hook handles
 func (r *Hook) Levels() []log.Level {
-	if r.triggerLevels == nil {
+	if r.triggers == nil {
 		return defaultTriggerLevels
 	}
-	return r.triggerLevels
+	return r.triggers
 }
 
 // convertFields converts from log.Fields to map[string]string so that we can
