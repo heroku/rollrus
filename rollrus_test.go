@@ -83,7 +83,7 @@ func TestTriggerLevels(t *testing.T) {
 	}
 
 	newLevels := []log.Level{log.InfoLevel}
-	underTest.triggerLevels = newLevels
+	underTest.triggers = newLevels
 	if !reflect.DeepEqual(underTest.Levels(), newLevels) {
 		t.Fatal("Expected Levels() to return newLevels")
 	}
