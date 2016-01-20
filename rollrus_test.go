@@ -2,6 +2,7 @@ package rollrus
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -74,25 +75,16 @@ func TestTimeConversion(t *testing.T) {
 	}
 }
 
-func TestFiredLevels(t *testing.T) {
+func TestTriggerLevels(t *testing.T) {
 	client := roll.New("foobar", "testing")
 	underTest := &Hook{Client: client}
-
-	found := underTest.Levels()
-	if len(found) != len(defaultFiredLevels) {
-		t.Fatalf("Expected Levels() to return %d levels, found %d", len(defaultFiredLevels), len(found))
+	if !reflect.DeepEqual(underTest.Levels(), defaultTriggerLevels) {
+		t.Fatal("Expected Levels() to return defaultTriggerLevels")
 	}
 
-	for i := 0; i < len(defaultFiredLevels); i++ {
-		if found[i] != defaultFiredLevels[i] {
-			t.Fatal("Expected Levels() to return defaultFiredLevels")
-		}
-	}
-
-	underTest.firedLevels = []log.Level{log.InfoLevel}
-
-	found = underTest.Levels()
-	if len(found) != 1 || found[0] != log.InfoLevel {
-		t.Fatal("Expected Levels() to return a single log.Info")
+	newLevels := []log.Level{log.InfoLevel}
+	underTest.triggerLevels = newLevels
+	if !reflect.DeepEqual(underTest.Levels(), newLevels) {
+		t.Fatal("Expected Levels() to return newLevels")
 	}
 }
