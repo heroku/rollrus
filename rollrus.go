@@ -29,10 +29,23 @@ func SetupLogging(token, env string) {
 	setupLogging(token, env, defaultTriggerLevels)
 }
 
+// SetupInstanceLogging sets up logging just like SetupLogging, but it works 
+// against an instance of a logrus Logger, rather than the package level/global 
+// logger.
+func SetupInstanceLogging(l *log.Logger, token, env string) {
+	setupInstanceLogging(l, token, env, defaultTriggerLevels)
+}
+
 // SetupLoggingForLevels works like SetupLogging, but allows you to
 // set the levels on which to trigger this hook.
 func SetupLoggingForLevels(token, env string, levels []log.Level) {
 	setupLogging(token, env, levels)
+}
+
+// SetupInstanceLoggingForLevels works like SetupInstanceLogging, but allows
+// you to set the levels on which to trigger this hook.
+func SetupInstanceLoggingForLevels(l *log.Logger, token, env string, levels []log.Level) {
+	setupInstanceLogging(l, token, env, levels)
 }
 
 func setupLogging(token, env string, levels []log.Level) {
@@ -40,6 +53,12 @@ func setupLogging(token, env string, levels []log.Level) {
 
 	if token != "" {
 		log.AddHook(&Hook{Client: roll.New(token, env), triggers: levels})
+	}
+}
+
+func setupInstanceLogging(l *log.Logger, token, env string, levels []log.Level) {
+	if token != "" {
+		l.Hooks.Add(&Hook{Client: roll.New(token, env), triggers: levels})
 	}
 }
 
