@@ -32,7 +32,7 @@ func NewHook(token string, env string) *Hook {
 // your own logger instance.
 func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
 	return &Hook{
-		Client: roll.New(token, env),
+		Client:   roll.New(token, env),
 		triggers: levels,
 	}
 }
