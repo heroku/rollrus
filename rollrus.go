@@ -24,11 +24,8 @@ type Hook struct {
 
 // Setup a new hook with default reporting levels, useful for adding to
 // your own logger instance.
-func NewHook(token string, env string) Hook {
-	return Hook{
-		Client: roll.New(token, env),
-		triggers: defaultTriggerLevels,
-	}
+func NewHook(token string, env string) *Hook {
+	return NewHookForLevels(token, env, defaultTriggerLevels)
 }
 
 // Setup a new hook with specified reporting levels, useful for adding to
