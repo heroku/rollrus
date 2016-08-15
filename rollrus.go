@@ -22,18 +22,29 @@ type Hook struct {
 	triggers []log.Level
 }
 
+// Setup a new hook with default reporting levels, useful for adding to
+// your own logger instance.
+func NewHook(token string, env string) Hook {
+	return Hook{
+		Client: roll.New(token, env),
+		triggers: defaultTriggerLevels,
+	}
+}
+
+// Setup a new hook with specified reporting levels, useful for adding to
+// your own logger instance.
+func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
+	return &Hook{
+		Client: roll.New(token, env),
+		triggers: levels,
+	}
+}
+
 // SetupLogging sets up logging. If token is not an empty string a rollbar
 // hook is added with the environment set to env. The log formatter is set to a
 // TextFormatter with timestamps disabled, which is suitable for use on Heroku.
 func SetupLogging(token, env string) {
 	setupLogging(token, env, defaultTriggerLevels)
-}
-
-// SetupInstanceLogging sets up logging just like SetupLogging, but it works 
-// against an instance of a logrus Logger, rather than the package level/global 
-// logger.
-func SetupInstanceLogging(l *log.Logger, token, env string) {
-	setupInstanceLogging(l, token, env, defaultTriggerLevels)
 }
 
 // SetupLoggingForLevels works like SetupLogging, but allows you to
@@ -42,23 +53,11 @@ func SetupLoggingForLevels(token, env string, levels []log.Level) {
 	setupLogging(token, env, levels)
 }
 
-// SetupInstanceLoggingForLevels works like SetupInstanceLogging, but allows
-// you to set the levels on which to trigger this hook.
-func SetupInstanceLoggingForLevels(l *log.Logger, token, env string, levels []log.Level) {
-	setupInstanceLogging(l, token, env, levels)
-}
-
 func setupLogging(token, env string, levels []log.Level) {
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if token != "" {
-		log.AddHook(&Hook{Client: roll.New(token, env), triggers: levels})
-	}
-}
-
-func setupInstanceLogging(l *log.Logger, token, env string, levels []log.Level) {
-	if token != "" {
-		l.Hooks.Add(&Hook{Client: roll.New(token, env), triggers: levels})
+		log.AddHook(NewHookForLevels(token, env, levels))
 	}
 }
 
