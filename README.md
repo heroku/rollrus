@@ -8,23 +8,4 @@ Delivery is synchronous to help ensure that logs are delivered.
 
 # Usage
 
-```go
-package main
-
-import  (
-  "os"
-
-  log "github.com/Sirupsen/logrus"
-  "github.com/heroku/rollrus"
-)
-
-func main() {
-  rollrus.SetupLogging(os.Getenv("ROLLBAR_TOKEN"), os.Getenv("ENVIRONMENT"))
-
-  # This is not reported to Rollbar
-  log.Info("OHAI")
-
-  # This is reported to Rollbar
-  log.WithFields(log.Fields{"hi":"there"}).Fatal("The end.")
-}
-```
+Examples available in the [tests](https://github.com/heroku/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).

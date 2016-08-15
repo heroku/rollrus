@@ -22,6 +22,21 @@ type Hook struct {
 	triggers []log.Level
 }
 
+// Setup a new hook with default reporting levels, useful for adding to
+// your own logger instance.
+func NewHook(token string, env string) *Hook {
+	return NewHookForLevels(token, env, defaultTriggerLevels)
+}
+
+// Setup a new hook with specified reporting levels, useful for adding to
+// your own logger instance.
+func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
+	return &Hook{
+		Client:   roll.New(token, env),
+		triggers: levels,
+	}
+}
+
 // SetupLogging sets up logging. If token is not an empty string a rollbar
 // hook is added with the environment set to env. The log formatter is set to a
 // TextFormatter with timestamps disabled, which is suitable for use on Heroku.
@@ -39,7 +54,7 @@ func setupLogging(token, env string, levels []log.Level) {
 	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
 
 	if token != "" {
-		log.AddHook(&Hook{Client: roll.New(token, env), triggers: levels})
+		log.AddHook(NewHookForLevels(token, env, levels))
 	}
 }
 
