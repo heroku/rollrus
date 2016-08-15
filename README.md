@@ -8,4 +8,4 @@ Delivery is synchronous to help ensure that logs are delivered.
 
 # Usage
 
-Examples available in [tests](https://github.com/heroku/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).
+Examples available in the [tests](https://github.com/heroku/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).
