@@ -29,14 +29,13 @@ type Hook struct {
 	triggers []log.Level
 }
 
-// Setup a new hook with default reporting levels, useful for adding to
-// your own logger instance.
+// NewHook for use with when adding to you own logger instance. Uses the defualt
+// report levels.
 func NewHook(token string, env string) *Hook {
 	return NewHookForLevels(token, env, defaultTriggerLevels)
 }
 
-// Setup a new hook with specified reporting levels, useful for adding to
-// your own logger instance.
+// NewHookForLevels provided by the caller. Otherwise works like NewHook.
 func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
 	return &Hook{
 		Client:   roll.New(token, env),
