@@ -102,39 +102,28 @@ func (r *Hook) Fire(entry *log.Entry) error {
 }
 
 func (r *Hook) report(entry *log.Entry, cause error, m map[string]string, trace []uintptr) (err error) {
-	if entry.Level == log.FatalLevel ||
-		entry.Level == log.PanicLevel ||
-		entry.Level == log.ErrorLevel ||
-		entry.Level == log.WarnLevel {
+	hasTrace := len(trace) > 0
+	level := entry.Level
 
-		if len(trace) == 0 {
-			switch entry.Level {
-			case log.FatalLevel, log.PanicLevel:
-				_, err = r.Client.Critical(cause, m)
-			case log.ErrorLevel:
-				_, err = r.Client.Error(cause, m)
-			case log.WarnLevel:
-				_, err = r.Client.Warning(cause, m)
-			}
-		} else {
-			switch entry.Level {
-			case log.FatalLevel, log.PanicLevel:
-				_, err = r.Client.CriticalStack(cause, trace, m)
-			case log.ErrorLevel:
-				_, err = r.Client.ErrorStack(cause, trace, m)
-			case log.WarnLevel:
-				_, err = r.Client.WarningStack(cause, trace, m)
-			}
-		}
-	} else {
-		switch entry.Level {
-		case log.InfoLevel:
-			_, err = r.Client.Info(entry.Message, m)
-		case log.DebugLevel:
-			_, err = r.Client.Debug(entry.Message, m)
-		default:
-			err = fmt.Errorf("Unknown level: %s", entry.Level)
-		}
+	switch {
+	case hasTrace && level == log.FatalLevel:
+		_, err = r.Client.CriticalStack(cause, trace, m)
+	case hasTrace && level == log.PanicLevel:
+		_, err = r.Client.CriticalStack(cause, trace, m)
+	case hasTrace && level == log.ErrorLevel:
+		_, err = r.Client.ErrorStack(cause, trace, m)
+	case hasTrace && level == log.WarnLevel:
+		_, err = r.Client.WarningStack(cause, trace, m)
+	case level == log.FatalLevel || level == log.PanicLevel:
+		_, err = r.Client.Critical(cause, m)
+	case level == log.ErrorLevel:
+		_, err = r.Client.Error(cause, m)
+	case level == log.WarnLevel:
+		_, err = r.Client.Warning(cause, m)
+	case level == log.InfoLevel:
+		_, err = r.Client.Info(entry.Message, m)
+	case level == log.DebugLevel:
+		_, err = r.Client.Debug(entry.Message, m)
 	}
 	return err
 }
