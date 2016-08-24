@@ -99,11 +99,11 @@ func TestTimeConversion(t *testing.T) {
 }
 
 func TestExtractError(t *testing.T) {
-	i := make(logrus.Fields)
-	i["err"] = fmt.Errorf("foo bar baz")
+	entry := logrus.NewEntry(nil)
+	entry.Data["err"] = fmt.Errorf("foo bar baz")
 
-	cause, trace := extractError(i)
-	if len(trace) > 0 {
+	cause, trace := extractError(entry)
+	if len(trace) != 0 {
 		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
 	}
 
@@ -112,11 +112,26 @@ func TestExtractError(t *testing.T) {
 	}
 }
 
-func TestExtractErrorFromStackTracer(t *testing.T) {
-	i := make(logrus.Fields)
-	i["err"] = errors.Errorf("foo bar baz")
+func TestExtractErrorDefault(t *testing.T) {
+	entry := logrus.NewEntry(nil)
+	entry.Data["no-err"] = fmt.Errorf("foo bar baz")
+	entry.Message = "message error"
 
-	cause, trace := extractError(i)
+	cause, trace := extractError(entry)
+	if len(trace) != 0 {
+		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
+	}
+
+	if cause.Error() != "message error" {
+		t.Fatalf("Expected error as string to be 'message error', but was instead: %q", cause)
+	}
+}
+
+func TestExtractErrorFromStackTracer(t *testing.T) {
+	entry := logrus.NewEntry(nil)
+	entry.Data["err"] = errors.Errorf("foo bar baz")
+
+	cause, trace := extractError(entry)
 	if len(trace) != 3 {
 		t.Fatal("Expected length of trace to be == 3, but instead is: ", len(trace))
 	}

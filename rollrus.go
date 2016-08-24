@@ -88,9 +88,9 @@ func ReportPanic(token, env string) {
 // Fire the hook. This is called by Logrus for entries that match the levels
 // returned by Levels(). See below.
 func (r *Hook) Fire(entry *log.Entry) error {
-	cause, trace := extractError(entry.Data)
+	cause, trace := extractError(entry)
 	if cause == nil {
-		cause = fmt.Errorf(entry.Message)
+
 	}
 
 	m := convertFields(entry.Data)
@@ -168,7 +168,10 @@ func convertFields(fields log.Fields) map[string]string {
 }
 
 // extractError attempts to extract an error from a well known field, err or error
-func extractError(fields log.Fields) (cause error, trace []uintptr) {
+func extractError(entry *log.Entry) (error, []uintptr) {
+	var trace []uintptr
+	fields := entry.Data
+
 	type stackTracer interface {
 		StackTrace() errors.StackTrace
 	}
@@ -183,14 +186,16 @@ func extractError(fields log.Fields) (cause error, trace []uintptr) {
 			continue
 		}
 
-		cause = errors.Cause(err)
+		cause := errors.Cause(err)
 		tracer, ok := err.(stackTracer)
 		if ok {
-			trace = copyStackTrace(tracer.StackTrace())
+			return cause, copyStackTrace(tracer.StackTrace())
 		}
-		return
+		return cause, trace
 	}
-	return
+
+	// when no error found, default to the logged message.
+	return fmt.Errorf(entry.Message), trace
 }
 
 func copyStackTrace(trace errors.StackTrace) (out []uintptr) {
