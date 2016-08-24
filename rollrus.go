@@ -6,6 +6,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/stvp/roll"
 )
 
@@ -13,6 +14,12 @@ var defaultTriggerLevels = []log.Level{
 	log.ErrorLevel,
 	log.FatalLevel,
 	log.PanicLevel,
+}
+
+// wellKnownErrorFields are fields that are expected to be of type `error`
+// in priority order.
+var wellKnownErrorFields = []string{
+	"err", "error",
 }
 
 // Hook wrapper for the rollbar Client
@@ -80,28 +87,55 @@ func ReportPanic(token, env string) {
 
 // Fire the hook. This is called by Logrus for entries that match the levels
 // returned by Levels(). See below.
-func (r *Hook) Fire(entry *log.Entry) (err error) {
-	e := fmt.Errorf(entry.Message)
+func (r *Hook) Fire(entry *log.Entry) error {
+	cause, trace := extractError(entry.Data)
+	if cause == nil {
+		cause = fmt.Errorf(entry.Message)
+	}
+
 	m := convertFields(entry.Data)
 	if _, exists := m["time"]; !exists {
 		m["time"] = entry.Time.Format(time.RFC3339)
 	}
 
-	switch entry.Level {
-	case log.FatalLevel, log.PanicLevel:
-		_, err = r.Client.Critical(e, m)
-	case log.ErrorLevel:
-		_, err = r.Client.Error(e, m)
-	case log.WarnLevel:
-		_, err = r.Client.Warning(e, m)
-	case log.InfoLevel:
-		_, err = r.Client.Info(entry.Message, m)
-	case log.DebugLevel:
-		_, err = r.Client.Debug(entry.Message, m)
-	default:
-		return fmt.Errorf("Unknown level: %s", entry.Level)
-	}
+	return r.report(entry, cause, m, trace)
+}
 
+func (r *Hook) report(entry *log.Entry, cause error, m map[string]string, trace []uintptr) (err error) {
+	if entry.Level == log.FatalLevel ||
+		entry.Level == log.PanicLevel ||
+		entry.Level == log.ErrorLevel ||
+		entry.Level == log.WarnLevel {
+
+		if len(trace) == 0 {
+			switch entry.Level {
+			case log.FatalLevel, log.PanicLevel:
+				_, err = r.Client.Critical(cause, m)
+			case log.ErrorLevel:
+				_, err = r.Client.Error(cause, m)
+			case log.WarnLevel:
+				_, err = r.Client.Warning(cause, m)
+			}
+		} else {
+			switch entry.Level {
+			case log.FatalLevel, log.PanicLevel:
+				_, err = r.Client.CriticalStack(cause, trace, m)
+			case log.ErrorLevel:
+				_, err = r.Client.ErrorStack(cause, trace, m)
+			case log.WarnLevel:
+				_, err = r.Client.WarningStack(cause, trace, m)
+			}
+		}
+	} else {
+		switch entry.Level {
+		case log.InfoLevel:
+			_, err = r.Client.Info(entry.Message, m)
+		case log.DebugLevel:
+			_, err = r.Client.Debug(entry.Message, m)
+		default:
+			err = fmt.Errorf("Unknown level: %s", entry.Level)
+		}
+	}
 	return err
 }
 
@@ -131,4 +165,37 @@ func convertFields(fields log.Fields) map[string]string {
 	}
 
 	return m
+}
+
+// extractError attempts to extract an error from a well known field, err or error
+func extractError(fields log.Fields) (cause error, trace []uintptr) {
+	type stackTracer interface {
+		StackTrace() errors.StackTrace
+	}
+
+	for _, f := range wellKnownErrorFields {
+		e, ok := fields[f]
+		if !ok {
+			continue
+		}
+		err, ok := e.(error)
+		if !ok {
+			continue
+		}
+
+		cause = errors.Cause(err)
+		tracer, ok := err.(stackTracer)
+		if ok {
+			trace = copyStackTrace(tracer.StackTrace())
+		}
+		return
+	}
+	return
+}
+
+func copyStackTrace(trace errors.StackTrace) (out []uintptr) {
+	for _, frame := range trace {
+		out = append(out, uintptr(frame))
+	}
+	return
 }
