@@ -43,9 +43,9 @@ func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
 	}
 }
 
-// SetupLogging sets up logging. If token is not an empty string a rollbar
+// SetupLogging for use on Heroku. If token is not an empty string a rollbar
 // hook is added with the environment set to env. The log formatter is set to a
-// TextFormatter with timestamps disabled, which is suitable for use on Heroku.
+// TextFormatter with timestamps disabled.
 func SetupLogging(token, env string) {
 	setupLogging(token, env, defaultTriggerLevels)
 }
