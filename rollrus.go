@@ -89,10 +89,6 @@ func ReportPanic(token, env string) {
 // returned by Levels(). See below.
 func (r *Hook) Fire(entry *log.Entry) error {
 	cause, trace := extractError(entry)
-	if cause == nil {
-
-	}
-
 	m := convertFields(entry.Data)
 	if _, exists := m["time"]; !exists {
 		m["time"] = entry.Time.Format(time.RFC3339)
