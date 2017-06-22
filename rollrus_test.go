@@ -166,11 +166,19 @@ func TestWithIgnoredErrors(t *testing.T) {
 	l.Out = out
 	l.Hooks.Add(hook)
 
+	// direct, naked error is skipped
 	l.WithError(io.EOF).Error()
 	if hook.reported {
 		t.Fatal("expected no report to have happened")
 	}
 
+	// similarly, if an error was wrapped, it's still skipped
+	l.WithError(errors.Wrap(io.EOF, "hello")).Error()
+	if hook.reported {
+		t.Fatal("expected no report to have happened")
+	}
+
+	// non white listed errors must still go through.
 	l.WithError(errors.New("hello")).Error()
 	if !hook.reported {
 		t.Fatal("expected a report to have happened")
