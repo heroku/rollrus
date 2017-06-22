@@ -134,6 +134,8 @@ func (r *Hook) report(entry *log.Entry, cause error, m map[string]string, trace 
 	hasTrace := len(trace) > 0
 	level := entry.Level
 
+	r.reported = true
+
 	switch {
 	case hasTrace && level == log.FatalLevel:
 		_, err = r.Client.CriticalStack(cause, trace, m)
