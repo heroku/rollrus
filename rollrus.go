@@ -1,3 +1,20 @@
+// Package rollrus combines github.com/stvp/roll with github.com/Sirupsen/logrus
+// via logrus.Hook mechanism, so that whenever logrus' logger.Error/f(),
+// logger.Fatal/f() or logger.Panic/f() are used the messages are
+// intercepted and sent to rollbar.
+//
+// Using SetupLogging should suffice for basic use cases that use the logrus
+// singleton logger.
+//
+// More custom uses are supported by creating a new Hook with NewHook and
+// registering that hook with the logrus Logger of choice.
+//
+// The levels can be customized with the WithLevels OptionFunc.
+//
+// Specific errors can be ignored with the WithIgnoredErrors OptionFunc. This is
+// useful for ignoring errors such as context.Canceled.
+//
+// See the Examples in the tests for more usage.
 package rollrus
 
 import (
@@ -5,56 +22,56 @@ import (
 	"os"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 	"github.com/stvp/roll"
 )
 
-var defaultTriggerLevels = []log.Level{
-	log.ErrorLevel,
-	log.FatalLevel,
-	log.PanicLevel,
+var defaultTriggerLevels = []logrus.Level{
+	logrus.ErrorLevel,
+	logrus.FatalLevel,
+	logrus.PanicLevel,
 }
 
-// wellKnownErrorFields are fields that are expected to be of type `error`
-// in priority order.
-var wellKnownErrorFields = []string{
-	"err", "error",
-}
-
-// Hook wrapper for the rollbar Client
-// May be used as a rollbar client itself
+// Hook is a wrapper for the rollbar Client and is usable as a logrus.Hook.
 type Hook struct {
 	roll.Client
-	triggers      []log.Level
-	ignoredErrors map[error]bool
+	triggers      []logrus.Level
+	ignoredErrors map[error]struct{}
 
 	// only used for tests to verify whether or not a report happened.
 	reported bool
 }
 
-// OptionFunc is any option you can pass to NewHook.
+// OptionFunc that can be passed to NewHook.
 type OptionFunc func(*Hook)
 
-// WithLevels is an option to allow you to pass in the levels that will be
-// reported.
-func WithLevels(levels ...log.Level) OptionFunc {
+// wellKnownErrorFields are the names of the fields to be checked for values of
+// type `error`, in priority order.
+var wellKnownErrorFields = []string{
+	logrus.ErrorKey, "err",
+}
+
+// WithLevels is an OptionFunc that customizes the log.Levels the hook will
+// report on.
+func WithLevels(levels ...logrus.Level) OptionFunc {
 	return func(h *Hook) {
 		h.triggers = levels
 	}
 }
 
-// WithIgnoredErrors whitelists certain errors to prevent them from Firing.
+// WithIgnoredErrors is an OptionFunc that whitelists certain errors to prevent
+// them from firing.
 func WithIgnoredErrors(errors ...error) OptionFunc {
 	return func(h *Hook) {
 		for _, e := range errors {
-			h.ignoredErrors[e] = true
+			h.ignoredErrors[e] = struct{}{}
 		}
 	}
 }
 
-// NewHook for use with when adding to you own logger instance. Uses the defualt
-// report levels.
+// NewHook creates a hook that is intended for use with your own logrus.Logger
+// instance. Uses the defualt report levels defined in wellKnownErrorFields.
 func NewHook(token string, env string, opts ...OptionFunc) *Hook {
 	h := NewHookForLevels(token, env, defaultTriggerLevels)
 
@@ -66,11 +83,11 @@ func NewHook(token string, env string, opts ...OptionFunc) *Hook {
 }
 
 // NewHookForLevels provided by the caller. Otherwise works like NewHook.
-func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
+func NewHookForLevels(token string, env string, levels []logrus.Level) *Hook {
 	return &Hook{
 		Client:        roll.New(token, env),
 		triggers:      levels,
-		ignoredErrors: make(map[error]bool),
+		ignoredErrors: make(map[error]struct{}),
 	}
 }
 
@@ -83,15 +100,15 @@ func SetupLogging(token, env string) {
 
 // SetupLoggingForLevels works like SetupLogging, but allows you to
 // set the levels on which to trigger this hook.
-func SetupLoggingForLevels(token, env string, levels []log.Level) {
+func SetupLoggingForLevels(token, env string, levels []logrus.Level) {
 	setupLogging(token, env, levels)
 }
 
-func setupLogging(token, env string, levels []log.Level) {
-	log.SetFormatter(&log.TextFormatter{DisableTimestamp: true})
+func setupLogging(token, env string, levels []logrus.Level) {
+	logrus.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
 
 	if token != "" {
-		log.AddHook(NewHookForLevels(token, env, levels))
+		logrus.AddHook(NewHookForLevels(token, env, levels))
 	}
 }
 
@@ -115,11 +132,19 @@ func ReportPanic(token, env string) {
 	}
 }
 
+// Levels returns the logrus log.Levels that this hook handles
+func (r *Hook) Levels() []logrus.Level {
+	if r.triggers == nil {
+		return defaultTriggerLevels
+	}
+	return r.triggers
+}
+
 // Fire the hook. This is called by Logrus for entries that match the levels
-// returned by Levels(). See below.
-func (r *Hook) Fire(entry *log.Entry) error {
-	cause, trace := extractError(entry)
-	if r.ignoredErrors[cause] {
+// returned by Levels().
+func (r *Hook) Fire(entry *logrus.Entry) error {
+	trace, cause := extractError(entry)
+	if _, ok := r.ignoredErrors[cause]; ok {
 		return nil
 	}
 	m := convertFields(entry.Data)
@@ -130,46 +155,38 @@ func (r *Hook) Fire(entry *log.Entry) error {
 	return r.report(entry, cause, m, trace)
 }
 
-func (r *Hook) report(entry *log.Entry, cause error, m map[string]string, trace []uintptr) (err error) {
+func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]string, trace []uintptr) (err error) {
 	hasTrace := len(trace) > 0
 	level := entry.Level
 
 	r.reported = true
 
 	switch {
-	case hasTrace && level == log.FatalLevel:
+	case hasTrace && level == logrus.FatalLevel:
 		_, err = r.Client.CriticalStack(cause, trace, m)
-	case hasTrace && level == log.PanicLevel:
+	case hasTrace && level == logrus.PanicLevel:
 		_, err = r.Client.CriticalStack(cause, trace, m)
-	case hasTrace && level == log.ErrorLevel:
+	case hasTrace && level == logrus.ErrorLevel:
 		_, err = r.Client.ErrorStack(cause, trace, m)
-	case hasTrace && level == log.WarnLevel:
+	case hasTrace && level == logrus.WarnLevel:
 		_, err = r.Client.WarningStack(cause, trace, m)
-	case level == log.FatalLevel || level == log.PanicLevel:
+	case level == logrus.FatalLevel || level == logrus.PanicLevel:
 		_, err = r.Client.Critical(cause, m)
-	case level == log.ErrorLevel:
+	case level == logrus.ErrorLevel:
 		_, err = r.Client.Error(cause, m)
-	case level == log.WarnLevel:
+	case level == logrus.WarnLevel:
 		_, err = r.Client.Warning(cause, m)
-	case level == log.InfoLevel:
+	case level == logrus.InfoLevel:
 		_, err = r.Client.Info(entry.Message, m)
-	case level == log.DebugLevel:
+	case level == logrus.DebugLevel:
 		_, err = r.Client.Debug(entry.Message, m)
 	}
 	return err
 }
 
-// Levels returns the logrus log levels that this hook handles
-func (r *Hook) Levels() []log.Level {
-	if r.triggers == nil {
-		return defaultTriggerLevels
-	}
-	return r.triggers
-}
-
 // convertFields converts from log.Fields to map[string]string so that we can
 // report extra fields to Rollbar
-func convertFields(fields log.Fields) map[string]string {
+func convertFields(fields logrus.Fields) map[string]string {
 	m := make(map[string]string)
 	for k, v := range fields {
 		switch t := v.(type) {
@@ -188,7 +205,7 @@ func convertFields(fields log.Fields) map[string]string {
 }
 
 // extractError attempts to extract an error from a well known field, err or error
-func extractError(entry *log.Entry) (error, []uintptr) {
+func extractError(entry *logrus.Entry) ([]uintptr, error) {
 	var trace []uintptr
 	fields := entry.Data
 
@@ -209,13 +226,13 @@ func extractError(entry *log.Entry) (error, []uintptr) {
 		cause := errors.Cause(err)
 		tracer, ok := err.(stackTracer)
 		if ok {
-			return cause, copyStackTrace(tracer.StackTrace())
+			return copyStackTrace(tracer.StackTrace()), cause
 		}
-		return cause, trace
+		return trace, cause
 	}
 
 	// when no error found, default to the logged message.
-	return fmt.Errorf(entry.Message), trace
+	return trace, fmt.Errorf(entry.Message)
 }
 
 func copyStackTrace(trace errors.StackTrace) (out []uintptr) {

@@ -1,7 +1,6 @@
 package rollrus
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -33,6 +32,13 @@ func ExampleNewHook() {
 
 	// This will be reported to Rollbar
 	log.Panic("Boom.")
+}
+
+func TestLogrusHookInterface(t *testing.T) {
+	var hook interface{} = NewHook("", "foo")
+	if _, ok := hook.(logrus.Hook); !ok {
+		t.Fatal("expected NewHook's return value to implement logrus.Hook")
+	}
 }
 
 func TestIntConversion(t *testing.T) {
@@ -104,7 +110,7 @@ func TestExtractError(t *testing.T) {
 	entry := logrus.NewEntry(nil)
 	entry.Data["err"] = fmt.Errorf("foo bar baz")
 
-	cause, trace := extractError(entry)
+	trace, cause := extractError(entry)
 	if len(trace) != 0 {
 		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
 	}
@@ -119,7 +125,7 @@ func TestExtractErrorDefault(t *testing.T) {
 	entry.Data["no-err"] = fmt.Errorf("foo bar baz")
 	entry.Message = "message error"
 
-	cause, trace := extractError(entry)
+	trace, cause := extractError(entry)
 	if len(trace) != 0 {
 		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
 	}
@@ -133,7 +139,7 @@ func TestExtractErrorFromStackTracer(t *testing.T) {
 	entry := logrus.NewEntry(nil)
 	entry.Data["err"] = errors.Errorf("foo bar baz")
 
-	cause, trace := extractError(entry)
+	trace, cause := extractError(entry)
 	if len(trace) != 3 {
 		t.Fatal("Expected length of trace to be == 3, but instead is: ", len(trace))
 	}
@@ -144,7 +150,7 @@ func TestExtractErrorFromStackTracer(t *testing.T) {
 }
 
 func TestTriggerLevels(t *testing.T) {
-	client := roll.New("foobar", "testing")
+	client := roll.New("", "testing")
 	underTest := &Hook{Client: client}
 	if !reflect.DeepEqual(underTest.Levels(), defaultTriggerLevels) {
 		t.Fatal("Expected Levels() to return defaultTriggerLevels")
@@ -158,29 +164,43 @@ func TestTriggerLevels(t *testing.T) {
 }
 
 func TestWithIgnoredErrors(t *testing.T) {
-	hook := NewHook("foobar", "testing", WithIgnoredErrors(io.EOF))
+	h := NewHook("", "testing", WithIgnoredErrors(io.EOF))
+	entry := logrus.NewEntry(nil)
+	entry.Message = "This is a test"
 
-	out := new(bytes.Buffer)
-
-	l := logrus.New()
-	l.Out = out
-	l.Hooks.Add(hook)
-
-	// direct, naked error is skipped
-	l.WithError(io.EOF).Error()
-	if hook.reported {
+	// Exact error is skipped.
+	entry.Data["err"] = io.EOF
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if h.reported {
 		t.Fatal("expected no report to have happened")
 	}
 
-	// similarly, if an error was wrapped, it's still skipped
-	l.WithError(errors.Wrap(io.EOF, "hello")).Error()
-	if hook.reported {
+	// Wrapped error is also skipped.
+	entry.Data["err"] = errors.Wrap(io.EOF, "hello")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if h.reported {
 		t.Fatal("expected no report to have happened")
 	}
 
-	// non white listed errors must still go through.
-	l.WithError(errors.New("hello")).Error()
-	if !hook.reported {
+	// Non blacklisted errors get reported.
+	entry.Data["err"] = errors.New("hello")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if !h.reported {
+		t.Fatal("expected a report to have happened")
+	}
+
+	// no err gets reported.
+	delete(entry.Data, "err")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if !h.reported {
 		t.Fatal("expected a report to have happened")
 	}
 }
