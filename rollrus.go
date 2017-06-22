@@ -28,12 +28,16 @@ type Hook struct {
 	roll.Client
 	triggers      []log.Level
 	ignoredErrors map[error]bool
+
+	// only used for tests to verify whether or not a report happened.
+	reported bool
 }
 
 // OptionFunc is any option you can pass to NewHook.
 type OptionFunc func(*Hook)
 
-// WithLevels is an option to allow you to pass in levels.
+// WithLevels is an option to allow you to pass in the levels that will be
+// reported.
 func WithLevels(levels ...log.Level) OptionFunc {
 	return func(h *Hook) {
 		h.triggers = levels
