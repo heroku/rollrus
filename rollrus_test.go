@@ -2,6 +2,7 @@ package rollrus
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 	"time"
@@ -152,5 +153,14 @@ func TestTriggerLevels(t *testing.T) {
 	underTest.triggers = newLevels
 	if !reflect.DeepEqual(underTest.Levels(), newLevels) {
 		t.Fatal("Expected Levels() to return newLevels")
+	}
+}
+
+func TestWithIgnoredErrors(t *testing.T) {
+	hook := NewHook("foobar", "testing", WithIgnoredErrors(io.EOF))
+
+	want := map[error]bool{io.EOF: true}
+	if !reflect.DeepEqual(hook.ignoredErrors, want) {
+		t.Fatalf("got ignoredErrors: %v want %v", hook.ignoredErrors, want)
 	}
 }

@@ -26,20 +26,47 @@ var wellKnownErrorFields = []string{
 // May be used as a rollbar client itself
 type Hook struct {
 	roll.Client
-	triggers []log.Level
+	triggers      []log.Level
+	ignoredErrors map[error]bool
+}
+
+// OptionFunc is any option you can pass to NewHook.
+type OptionFunc func(*Hook)
+
+// WithLevels is an option to allow you to pass in levels.
+func WithLevels(levels ...log.Level) OptionFunc {
+	return func(h *Hook) {
+		h.triggers = levels
+	}
+}
+
+// WithIgnoredErrors whitelists certain errors to prevent them from Firing.
+func WithIgnoredErrors(errors ...error) OptionFunc {
+	return func(h *Hook) {
+		for _, e := range errors {
+			h.ignoredErrors[e] = true
+		}
+	}
 }
 
 // NewHook for use with when adding to you own logger instance. Uses the defualt
 // report levels.
-func NewHook(token string, env string) *Hook {
-	return NewHookForLevels(token, env, defaultTriggerLevels)
+func NewHook(token string, env string, opts ...OptionFunc) *Hook {
+	h := NewHookForLevels(token, env, defaultTriggerLevels)
+
+	for _, o := range opts {
+		o(h)
+	}
+
+	return h
 }
 
 // NewHookForLevels provided by the caller. Otherwise works like NewHook.
 func NewHookForLevels(token string, env string, levels []log.Level) *Hook {
 	return &Hook{
-		Client:   roll.New(token, env),
-		triggers: levels,
+		Client:        roll.New(token, env),
+		triggers:      levels,
+		ignoredErrors: make(map[error]bool),
 	}
 }
 
@@ -88,6 +115,9 @@ func ReportPanic(token, env string) {
 // returned by Levels(). See below.
 func (r *Hook) Fire(entry *log.Entry) error {
 	cause, trace := extractError(entry)
+	if r.ignoredErrors[cause] {
+		return nil
+	}
 	m := convertFields(entry.Data)
 	if _, exists := m["time"]; !exists {
 		m["time"] = entry.Time.Format(time.RFC3339)
