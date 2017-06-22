@@ -1,6 +1,7 @@
 package rollrus
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -159,8 +160,19 @@ func TestTriggerLevels(t *testing.T) {
 func TestWithIgnoredErrors(t *testing.T) {
 	hook := NewHook("foobar", "testing", WithIgnoredErrors(io.EOF))
 
-	want := map[error]bool{io.EOF: true}
-	if !reflect.DeepEqual(hook.ignoredErrors, want) {
-		t.Fatalf("got ignoredErrors: %v want %v", hook.ignoredErrors, want)
+	out := new(bytes.Buffer)
+
+	l := logrus.New()
+	l.Out = out
+	l.Hooks.Add(hook)
+
+	l.WithError(io.EOF).Error()
+	if hook.reported {
+		t.Fatal("expected no report to have happened")
+	}
+
+	l.WithError(errors.New("hello")).Error()
+	if !hook.reported {
+		t.Fatal("expected a report to have happened")
 	}
 }
