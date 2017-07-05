@@ -1,4 +1,4 @@
-// Package rollrus combines github.com/stvp/roll with github.com/Sirupsen/logrus
+// Package rollrus combines github.com/stvp/roll with github.com/sirupsen/logrus
 // via logrus.Hook mechanism, so that whenever logrus' logger.Error/f(),
 // logger.Fatal/f() or logger.Panic/f() are used the messages are
 // intercepted and sent to rollbar.
@@ -22,8 +22,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/stvp/roll"
 )
 
