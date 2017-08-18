@@ -3,6 +3,8 @@ package rollrus
 import (
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
@@ -184,6 +186,74 @@ func TestWithIgnoredErrors(t *testing.T) {
 	}
 	if h.reported {
 		t.Fatal("expected no report to have happened")
+	}
+
+	// Non blacklisted errors get reported.
+	entry.Data["err"] = errors.New("hello")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if !h.reported {
+		t.Fatal("expected a report to have happened")
+	}
+
+	// no err gets reported.
+	delete(entry.Data, "err")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if !h.reported {
+		t.Fatal("expected a report to have happened")
+	}
+}
+
+type isTemporary interface {
+	Temporary() bool
+}
+
+func TestWithIgnoreErrorFunc(t *testing.T) {
+	h := NewHook("", "testing", WithIgnoreErrorFunc(func(err error) bool {
+		if err == io.EOF {
+			return true
+		}
+
+		if e, ok := err.(isTemporary); ok && e.Temporary() {
+			return true
+		}
+
+		return false
+	}))
+
+	entry := logrus.NewEntry(nil)
+	entry.Message = "This is a test"
+
+	// Exact error is skipped.
+	entry.Data["err"] = io.EOF
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if h.reported {
+		t.Fatal("expected no report to have happened")
+	}
+
+	// Wrapped error is also skipped.
+	entry.Data["err"] = errors.Wrap(io.EOF, "hello")
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+	if h.reported {
+		t.Fatal("expected no report to have happened")
+	}
+
+	srv := httptest.NewServer(nil)
+	srv.Close()
+
+	// Temporary error skipped
+	_, err := http.Get(srv.URL)
+
+	entry.Data["err"] = err
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
 	}
 
 	// Non blacklisted errors get reported.
