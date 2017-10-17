@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/heroku/rollrus.svg?branch=master)](https://travis-ci.org/heroku/rollrus)&nbsp;[![GoDoc](https://godoc.org/github.com/heroku/rollrus?status.svg)](https://godoc.org/github.com/heroku/rollrus)
+[![Build Status](https://travis-ci.org/heroku/rollrus.svg?branch=master)](https://travis-ci.org/benjamindow/rollrus)&nbsp;[![GoDoc](https://godoc.org/github.com/benjamindow/rollrus?status.svg)](https://godoc.org/github.com/benjamindow/rollrus)
 
 # What
 
@@ -12,4 +12,4 @@ If the error includes a [`StackTrace`](https://godoc.org/github.com/pkg/errors#S
 
 # Usage
 
-Examples available in the [tests](https://github.com/heroku/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).
+Examples available in the [tests](https://github.com/benjamindow/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/benjamindow/rollrus).
