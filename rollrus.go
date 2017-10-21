@@ -61,6 +61,21 @@ func WithLevels(levels ...logrus.Level) OptionFunc {
 	}
 }
 
+// WithMinLevel is an OptionFunc that customizes the log.Levels the hook will
+// report on by selecting all levels more severe than the one provided.
+func WithMinLevel(level logrus.Level) OptionFunc {
+	var levels []logrus.Level
+	for _, l := range logrus.AllLevels {
+		if l <= level {
+			levels = append(levels, l)
+		}
+	}
+
+	return func(h *Hook) {
+		h.triggers = levels
+	}
+}
+
 // WithIgnoredErrors is an OptionFunc that whitelists certain errors to prevent
 // them from firing.
 func WithIgnoredErrors(errors ...error) OptionFunc {

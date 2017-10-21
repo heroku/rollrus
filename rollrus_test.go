@@ -165,6 +165,20 @@ func TestTriggerLevels(t *testing.T) {
 	}
 }
 
+func TestWithMinLevel(t *testing.T) {
+	h := NewHook("", "testing", WithMinLevel(logrus.InfoLevel))
+	expectedLevels := []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+		logrus.InfoLevel,
+	}
+	if !reflect.DeepEqual(h.Levels(), expectedLevels) {
+		t.Fatal("Expected Levels() to return all levels above Info")
+	}
+}
+
 func TestWithIgnoredErrors(t *testing.T) {
 	h := NewHook("", "testing", WithIgnoredErrors(io.EOF))
 	entry := logrus.NewEntry(nil)
