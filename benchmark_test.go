@@ -5,11 +5,14 @@ import (
 	"os"
 	"testing"
 
+	"io"
+
 	"github.com/sirupsen/logrus"
 )
 
 var vanillaLogger *logrus.Logger
 var rollrusLogger *logrus.Logger
+var rollrusCloser io.Closer
 
 func init() {
 	token := os.Getenv("ROLLBAR_TOKEN")
@@ -23,8 +26,9 @@ func init() {
 	vanillaLogger.Out = ioutil.Discard
 	rollrusLogger.Out = ioutil.Discard
 
-	rollrus := NewHook(token, "test")
+	rollrus, closer := NewHook(token, "test")
 	rollrusLogger.AddHook(rollrus)
+	rollrusCloser = closer
 }
 
 func BenchmarkVanillaLogger(b *testing.B) {
@@ -37,4 +41,5 @@ func BenchmarkRollrusLogger(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		rollrusLogger.Error("test")
 	}
+	rollrusCloser.Close()
 }

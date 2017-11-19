@@ -2,5 +2,10 @@ language: go
 go:
 - 1.6.3
 - 1.7
+- 1.8
+- 1.9
 script:
-- go test -v -race ./...
+- go test -race -bench=. ./...
+env:
+  global:
+    secure: kqtXQIVfFiHzjYsw94RGp60m8tBtHRKkHj2gsNcpuXMF61PkaJ+bZsZpC1JM6bOW0sZIxgsQlYXKCw0WxkJd245n2McrLkYDf7IsdycA+wiufBHDFmZ96OU2mM4DUyW157ECOkldNNqrPSIV8Vdm2LorM4VgptGZ1xrjFULiZsEAbVzzYnIuiu7MV3Xi98NWyNo6TWtMOYf8K/AMs8KKNTldrFZblKtD7dS6ForU0H70nTody3KCmMV+xPXxQI1dYZ7vbfXXmx/id+frr+Ycy8zpfM4nXoOpa5wh/UNngHykzWBevBMrg39lOg86V2JzSt9b6VUGXY9USBTS3juQ7QwD3O24kfelPV056HgCAmK5e2mMPMFqFRgrjJwkJbacOuImvrQP0bGFzOlFj57wynnCezT8VenhJiKSlL57zocc72B5RZYhqUT9IjLNmlIIEd0enmCDJtJVdkKlkO0Gl+X+Cqc/C72N6vFt6yCtetER6tusKeQCW0oPTafBQclBCjIYs9kaH4j+bivh4yTvkyxfqCtdGJMYyj1+UhXfep0LRGljRldv4ltWOq1jG6jywKrpY3h65XrDTSUDeA34NK22ZlhJaIseL+3QHBwy0vQXEJAwzgSnVpaQbCmRdwgyocByOEHurV2jUxtwsDnHGH2uJGNykpkYB/FCzwXxyS8=

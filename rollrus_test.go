@@ -22,7 +22,7 @@ func ExampleSetupLogging() {
 
 func ExampleNewHook() {
 	log := logrus.New()
-	hook := NewHook("my-secret-token", "production")
+	hook, _ := NewHook("my-secret-token", "production")
 	log.Hooks.Add(hook)
 
 	// This will not be reported to Rollbar
