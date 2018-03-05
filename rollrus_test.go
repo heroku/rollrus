@@ -165,6 +165,55 @@ func TestTriggerLevels(t *testing.T) {
 	}
 }
 
+func TestWithMinLevelInfo(t *testing.T) {
+	h := NewHook("", "testing", WithMinLevel(logrus.InfoLevel))
+	expectedLevels := []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+		logrus.InfoLevel,
+	}
+	if !reflect.DeepEqual(h.Levels(), expectedLevels) {
+		t.Fatal("Expected Levels() to return all levels above Info")
+	}
+}
+
+func TestWithMinLevelFatal(t *testing.T) {
+	h := NewHook("", "testing", WithMinLevel(logrus.FatalLevel))
+	expectedLevels := []logrus.Level{
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+	}
+	if !reflect.DeepEqual(h.Levels(), expectedLevels) {
+		t.Fatal("Expected Levels() to return all levels above Fatal")
+	}
+}
+
+func TestLoggingBelowTheMinimumLevelDoesNotFire(t *testing.T) {
+	h := NewHook("", "testing", WithMinLevel(logrus.FatalLevel))
+	l := logrus.New()
+	l.AddHook(h)
+
+	l.Error("This is a test")
+
+	if h.reported {
+		t.Fatal("expected no report to have happened")
+	}
+}
+func TestLoggingAboveTheMinimumLevelDoesFire(t *testing.T) {
+	h := NewHook("", "testing", WithMinLevel(logrus.WarnLevel))
+	l := logrus.New()
+	l.AddHook(h)
+
+	l.Warn("This is a test")
+
+	if !h.reported {
+		t.Fatal("expected report to have happened")
+	}
+}
+
+
 func TestWithIgnoredErrors(t *testing.T) {
 	h := NewHook("", "testing", WithIgnoredErrors(io.EOF))
 	entry := logrus.NewEntry(nil)
