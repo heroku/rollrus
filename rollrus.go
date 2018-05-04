@@ -226,7 +226,7 @@ func convertFields(fields logrus.Fields) map[string]string {
 			if s, ok := v.(fmt.Stringer); ok {
 				m[k] = s.String()
 			} else {
-				m[k] = fmt.Sprintf("%+v", t)
+				m[k] = fmt.Sprintf("%+v", v)
 			}
 		}
 	}
