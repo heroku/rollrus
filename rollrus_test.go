@@ -324,18 +324,6 @@ func TestWithIgnoreErrorFunc(t *testing.T) {
 }
 
 func TestWithIgnoreFunc(t *testing.T) {
-	h := NewHook("", "testing", WithIgnoreFunc(func(err error, m map[string]string) bool {
-		if err == io.EOF {
-			return true
-		}
-
-		if m["ignore"] == "true" {
-			return true
-		}
-
-		return false
-	}))
-
 	cases := []struct {
 		name       string
 		fields     logrus.Fields
@@ -368,6 +356,18 @@ func TestWithIgnoreFunc(t *testing.T) {
 
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
+
+			h := NewHook("", "testing", WithIgnoreFunc(func(err error, m map[string]string) bool {
+				if err == io.EOF {
+					return true
+				}
+
+				if m["ignore"] == "true" {
+					return true
+				}
+
+				return false
+			}))
 
 			entry := logrus.NewEntry(nil)
 			entry.Message = "This is a test"
