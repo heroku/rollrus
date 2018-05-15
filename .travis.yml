@@ -1,6 +1,5 @@
 language: go
 go:
-- 1.6.3
-- 1.7
+- 1.10.2
 script:
 - go test -v -race ./...
