@@ -213,7 +213,6 @@ func TestLoggingAboveTheMinimumLevelDoesFire(t *testing.T) {
 	}
 }
 
-
 func TestWithIgnoredErrors(t *testing.T) {
 	h := NewHook("", "testing", WithIgnoredErrors(io.EOF))
 	entry := logrus.NewEntry(nil)
@@ -321,5 +320,70 @@ func TestWithIgnoreErrorFunc(t *testing.T) {
 	}
 	if !h.reported {
 		t.Fatal("expected a report to have happened")
+	}
+}
+
+func TestWithIgnoreFunc(t *testing.T) {
+	cases := []struct {
+		name       string
+		fields     logrus.Fields
+		skipReport bool
+	}{
+		{
+			name:       "extract error is skipped",
+			fields:     map[string]interface{}{"err": io.EOF},
+			skipReport: true,
+		},
+		{
+			name:       "wrapped error is skipped",
+			fields:     map[string]interface{}{"err": errors.Wrap(io.EOF, "hello")},
+			skipReport: true,
+		},
+		{
+			name:       "ignored field is skipped",
+			fields:     map[string]interface{}{"ignore": "true"},
+			skipReport: true,
+		},
+		{
+			name:       "error is not skipped",
+			fields:     map[string]interface{}{},
+			skipReport: false,
+		},
+	}
+
+	for _, c := range cases {
+		c := c // capture local var for parallel tests
+
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := NewHook("", "testing", WithIgnoreFunc(func(err error, m map[string]string) bool {
+				if err == io.EOF {
+					return true
+				}
+
+				if m["ignore"] == "true" {
+					return true
+				}
+
+				return false
+			}))
+
+			entry := logrus.NewEntry(nil)
+			entry.Message = "This is a test"
+			entry.Data = c.fields
+
+			if err := h.Fire(entry); err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			if c.skipReport && h.reported {
+				t.Errorf("expected report to be skipped")
+			}
+
+			if !c.skipReport && !h.reported {
+				t.Errorf("expected report to be fired")
+			}
+		})
 	}
 }

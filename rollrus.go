@@ -39,6 +39,7 @@ type Hook struct {
 	triggers        []logrus.Level
 	ignoredErrors   map[error]struct{}
 	ignoreErrorFunc func(error) bool
+	ignoreFunc      func(error, map[string]string) bool
 
 	// only used for tests to verify whether or not a report happened.
 	reported bool
@@ -94,6 +95,14 @@ func WithIgnoreErrorFunc(fn func(error) bool) OptionFunc {
 	}
 }
 
+// WithIgnoreFunc is an OptionFunc that receives the error and custom fields that are about
+// to be logged and returns true/false if it wants to fire a rollbar alert for.
+func WithIgnoreFunc(fn func(err error, fields map[string]string) bool) OptionFunc {
+	return func(h *Hook) {
+		h.ignoreFunc = fn
+	}
+}
+
 // NewHook creates a hook that is intended for use with your own logrus.Logger
 // instance. Uses the defualt report levels defined in wellKnownErrorFields.
 func NewHook(token string, env string, opts ...OptionFunc) *Hook {
@@ -113,6 +122,7 @@ func NewHookForLevels(token string, env string, levels []logrus.Level) *Hook {
 		triggers:        levels,
 		ignoredErrors:   make(map[error]struct{}),
 		ignoreErrorFunc: func(error) bool { return false },
+		ignoreFunc:      func(error, map[string]string) bool { return false },
 	}
 }
 
@@ -180,6 +190,10 @@ func (r *Hook) Fire(entry *logrus.Entry) error {
 	m := convertFields(entry.Data)
 	if _, exists := m["time"]; !exists {
 		m["time"] = entry.Time.Format(time.RFC3339)
+	}
+
+	if r.ignoreFunc(cause, m) {
+		return nil
 	}
 
 	return r.report(entry, cause, m, trace)
