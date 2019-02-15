@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	rollbar "github.com/rollbar/rollbar-go"
 	"github.com/sirupsen/logrus"
-	"github.com/stvp/roll"
 )
 
 func TestIntConversion(t *testing.T) {
@@ -83,11 +83,7 @@ func TestExtractError(t *testing.T) {
 	entry := logrus.NewEntry(nil)
 	entry.Data["err"] = fmt.Errorf("foo bar baz")
 
-	trace, cause := extractError(entry)
-	if len(trace) != 0 {
-		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
-	}
-
+	cause := extractError(entry)
 	if cause.Error() != "foo bar baz" {
 		t.Fatalf("Expected error as string to be 'foo bar baz', but was instead: %q", cause)
 	}
@@ -108,11 +104,7 @@ func TestExtractCauserErrorWithCause(t *testing.T) {
 
 	entry.Data["err"] = CauserError{fakeCause: "fbb cause", error: fmt.Errorf("foo bar baz")}
 
-	trace, cause := extractError(entry)
-	if len(trace) != 0 {
-		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
-	}
-
+	cause := extractError(entry)
 	if cause.Error() != "fbb cause" {
 		t.Fatalf("Expected error as string to be 'fbb cause', but was instead: %q", cause)
 	}
@@ -132,11 +124,7 @@ func TestExtractCauserErrorWithNilCause(t *testing.T) {
 
 	entry.Data["err"] = NilCauserError{error: fmt.Errorf("foo bar baz")}
 
-	trace, cause := extractError(entry)
-	if len(trace) != 0 {
-		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
-	}
-
+	cause := extractError(entry)
 	if cause.Error() != "foo bar baz" {
 		t.Fatalf("Expected error as string to be 'foo bar baz', but was instead: %q", cause)
 	}
@@ -147,11 +135,7 @@ func TestExtractErrorDefault(t *testing.T) {
 	entry.Data["no-err"] = fmt.Errorf("foo bar baz")
 	entry.Message = "message error"
 
-	trace, cause := extractError(entry)
-	if len(trace) != 0 {
-		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
-	}
-
+	cause := extractError(entry)
 	if cause.Error() != "message error" {
 		t.Fatalf("Expected error as string to be 'message error', but was instead: %q", cause)
 	}
@@ -161,18 +145,14 @@ func TestExtractErrorFromStackTracer(t *testing.T) {
 	entry := logrus.NewEntry(nil)
 	entry.Data["err"] = errors.Errorf("foo bar baz")
 
-	trace, cause := extractError(entry)
-	if len(trace) != 3 {
-		t.Fatal("Expected length of trace to be == 3, but instead is: ", len(trace))
-	}
-
+	cause := extractError(entry)
 	if cause.Error() != "foo bar baz" {
 		t.Fatalf("Expected error as string to be 'foo bar baz', but was instead: %q", cause.Error())
 	}
 }
 
 func TestTriggerLevels(t *testing.T) {
-	client := roll.New("", "testing")
+	client := rollbar.New("", "testing", "", "", "")
 	underTest := &Hook{Client: client}
 	if !reflect.DeepEqual(underTest.Levels(), defaultTriggerLevels) {
 		t.Fatal("Expected Levels() to return defaultTriggerLevels")
@@ -400,7 +380,7 @@ func TestWithIgnoreFunc(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewHook("", "testing", WithIgnoreFunc(func(err error, m map[string]string) bool {
+			h := NewHook("", "testing", WithIgnoreFunc(func(err error, m map[string]interface{}) bool {
 				if err == io.EOF {
 					return true
 				}
@@ -428,5 +408,13 @@ func TestWithIgnoreFunc(t *testing.T) {
 				t.Errorf("expected report to be fired")
 			}
 		})
+	}
+}
+
+func TestDynamicFrameSkipping(t *testing.T) {
+	skip := framesToSkip(0)
+
+	if skip != 2 {
+		t.Fatalf("expected frames to skip to be 2, got %d", skip)
 	}
 }
