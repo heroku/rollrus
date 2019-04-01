@@ -259,6 +259,26 @@ type isTemporary interface {
 	Temporary() bool
 }
 
+// https://github.com/go-pg/pg/blob/2ebb4d1d9b890619de2dc9e1dc0085b86f93fc91/internal/error.go#L22
+type PGError struct {
+	m map[byte]string
+}
+func (err PGError) Error() string {
+	return "error"
+}
+
+func TestWithErrorHandlesUnhashableErrors(t *testing.T) {
+	entry := logrus.NewEntry(nil)
+	entry.Message = "This is a test"
+	entry.Data["err"] = PGError{}
+
+	h := NewHook("", "testing")
+	// actually panics
+	if err := h.Fire(entry); err != nil {
+		t.Fatal("unexpected error ", err)
+	}
+}
+
 func TestWithIgnoreErrorFunc(t *testing.T) {
 	h := NewHook("", "testing", WithIgnoreErrorFunc(func(err error) bool {
 		if err == io.EOF {
