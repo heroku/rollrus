@@ -263,14 +263,17 @@ type isTemporary interface {
 type PGError struct {
 	m map[byte]string
 }
+
 func (err PGError) Error() string {
 	return "error"
 }
 
+// https://github.com/heroku/rollrus/issues/26
 func TestWithErrorHandlesUnhashableErrors(t *testing.T) {
+	_ = NewHook("", "", WithIgnoredErrors(PGError{m: make(map[byte]string)}))
 	entry := logrus.NewEntry(nil)
 	entry.Message = "This is a test"
-	entry.Data["err"] = PGError{}
+	entry.Data["err"] = PGError{m: make(map[byte]string)}
 
 	h := NewHook("", "testing")
 	// actually panics
