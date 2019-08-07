@@ -1,7 +1,11 @@
 language: go
+
 go:
-- 1.10.8
-- 1.11.6
-- 1.12.1
+  - 1.11.x
+  - 1.12.x
+
+env:
+  - GO111MODULE=on
+
 script:
-- go test -v -race ./...
+  - go test -v -race ./...
