@@ -3,6 +3,7 @@ GOTEST=go test
 GOTEST_OPT?=-v -race -timeout 30s
 GOTEST_OPT_WITH_COVERAGE = $(GOTEST_OPT) -coverprofile=coverage.txt -covermode=atomic
 TOOLS_DIR = ./.tools
+FIX=--fix
 
 .DEFAULT_GOAL := precommit
 
@@ -18,6 +19,7 @@ coverage:
 	go tool cover -html=coverage.txt -o coverage.html
 
 .PHONY: travis-ci
+travis-ci: override FIX = 
 travis-ci: precommit test coverage
 
 .PHONY: test
@@ -26,4 +28,4 @@ test:
 
 .PHONY: lint
 lint: $(TOOLS_DIR)/golangci-lint
-	$(TOOLS_DIR)/golangci-lint run --fix
+	$(TOOLS_DIR)/golangci-lint run $(FIX)
