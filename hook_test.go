@@ -93,6 +93,55 @@ func TestExtractError(t *testing.T) {
 	}
 }
 
+type CauserError struct {
+	fakeCause string
+	error
+}
+
+func (ce CauserError) Cause() error {
+	return fmt.Errorf(ce.fakeCause)
+}
+
+func TestExtractCauserErrorWithCause(t *testing.T) {
+
+	entry := logrus.NewEntry(nil)
+
+	entry.Data["err"] = CauserError{fakeCause: "fbb cause", error: fmt.Errorf("foo bar baz")}
+
+	trace, cause := extractError(entry)
+	if len(trace) != 0 {
+		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
+	}
+
+	if cause.Error() != "fbb cause" {
+		t.Fatalf("Expected error as string to be 'fbb cause', but was instead: %q", cause)
+	}
+}
+
+type NilCauserError struct {
+	error
+}
+
+func (ce NilCauserError) Cause() error {
+	return nil
+}
+
+func TestExtractCauserErrorWithNilCause(t *testing.T) {
+
+	entry := logrus.NewEntry(nil)
+
+	entry.Data["err"] = NilCauserError{error: fmt.Errorf("foo bar baz")}
+
+	trace, cause := extractError(entry)
+	if len(trace) != 0 {
+		t.Fatal("Expected length of trace to be equal to 0, but instead is: ", len(trace))
+	}
+
+	if cause.Error() != "foo bar baz" {
+		t.Fatalf("Expected error as string to be 'foo bar baz', but was instead: %q", cause)
+	}
+}
+
 func TestExtractErrorDefault(t *testing.T) {
 	entry := logrus.NewEntry(nil)
 	entry.Data["no-err"] = fmt.Errorf("foo bar baz")

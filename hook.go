@@ -150,6 +150,9 @@ func extractError(entry *logrus.Entry) ([]uintptr, error) {
 		}
 
 		cause := errors.Cause(err)
+		if cause == nil {
+			cause = err
+		}
 		tracer, ok := err.(stackTracer)
 		if ok {
 			return copyStackTrace(tracer.StackTrace()), cause
