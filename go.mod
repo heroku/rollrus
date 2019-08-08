@@ -1,6 +1,7 @@
 module github.com/heroku/rollrus
 
 require (
+	github.com/golangci/golangci-lint v1.17.1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9
 	github.com/sirupsen/logrus v1.4.2
