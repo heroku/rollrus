@@ -10,6 +10,8 @@ import (
 	"github.com/stvp/roll"
 )
 
+var _ logrus.Hook = &Hook{} //assert that *Hook is a logrus.Hook
+
 // Hook is a wrapper for the rollbar Client and is usable as a logrus.Hook.
 type Hook struct {
 	roll.Client
