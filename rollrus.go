@@ -18,7 +18,7 @@ var wellKnownErrorFields = []string{
 }
 
 // NewHook creates a hook that is intended for use with your own logrus.Logger
-// instance. Uses the defualt report levels defined in wellKnownErrorFields.
+// instance. Uses the default report levels defined in wellKnownErrorFields.
 func NewHook(token string, env string, opts ...OptionFunc) *Hook {
 	h := NewHookForLevels(token, env, defaultTriggerLevels)
 
