@@ -1,6 +1,8 @@
 package rollrus
 
 import (
+	"fmt"
+
 	"github.com/rollbar/rollbar-go"
 	"github.com/sirupsen/logrus"
 )
@@ -52,10 +54,16 @@ func setupLogging(token, env string, levels []logrus.Level) {
 }
 
 
-// ReportPanic attempts to report the panic to Rollbar if the token is set
+// ReportPanic attempts to report the panic to Rollbar using the provided
+// client and then re-panic. If it can't report the panic it will print an
+// error to stderr.
 func ReportPanic(token, env string) {
 	if token != "" {
-		h := &Hook{Client: rollbar.New(token, env, "", "", "")}
-		h.ReportPanic()
+		if p := recover(); p != nil {
+			defer panic(p)
+			r := rollbar.New(token, env, "", "", "")
+			r.ErrorWithLevel(rollbar.CRIT, fmt.Errorf("panic: %q", p))
+			r.Wait()
+		}
 	}
 }

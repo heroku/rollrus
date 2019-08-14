@@ -35,16 +35,6 @@ func NewHookForLevels(token string, env string, levels []logrus.Level) *Hook {
 	}
 }
 
-// ReportPanic attempts to report the panic to Rollbar using the provided
-// client and then re-panic. If it can't report the panic it will print an
-// error to stderr.
-func (r *Hook) ReportPanic() {
-	if p := recover(); p != nil {
-		r.Client.ErrorWithLevel(rollbar.CRIT, fmt.Errorf("panic: %q", p))
-		panic(p)
-	}
-}
-
 // Levels returns the logrus log.Levels that this hook handles
 func (r *Hook) Levels() []logrus.Level {
 	if r.triggers == nil {
@@ -95,6 +85,7 @@ func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]interface{}
 	case level == logrus.FatalLevel || level == logrus.PanicLevel:
 		skip := framesToSkip(2)
 		r.Client.ErrorWithStackSkipWithExtras(rollbar.CRIT, cause, skip, m)
+		r.Client.Wait()
 	case level == logrus.ErrorLevel:
 		skip := framesToSkip(2)
 		r.Client.ErrorWithStackSkipWithExtras(rollbar.ERR, cause, skip, m)
