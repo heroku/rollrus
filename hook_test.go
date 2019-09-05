@@ -171,6 +171,31 @@ func TestExtractErrorFromStackTracer(t *testing.T) {
 	}
 }
 
+type merr []error
+
+func (merr) Error() string { return "boom?" }
+func (e merr) Cause() error {
+	if len(e) == 0 {
+		return nil
+	}
+	return e[0]
+}
+func TestExtractErrorWithNilCause(t *testing.T) {
+	entry := logrus.NewEntry(nil)
+	var err error = merr{}
+	entry.Data["err"] = err
+
+	// len(err) == 0, so Cause(err) will return nil
+	_, cause := extractError(entry)
+	if cause == nil {
+		t.Fatalf("unexpected nil cause")
+	}
+
+	if cause.Error() != "boom?" {
+		t.Fatalf("Expected error as string to be 'boom?', but was instead: %q", cause.Error())
+	}
+}
+
 func TestTriggerLevels(t *testing.T) {
 	client := roll.New("", "testing")
 	underTest := &Hook{Client: client}
