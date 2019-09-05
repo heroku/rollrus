@@ -89,24 +89,14 @@ func TestExtractError(t *testing.T) {
 	}
 }
 
-type CauserError struct {
-	fakeCause string
-	error
-}
-
-func (ce CauserError) Cause() error {
-	return fmt.Errorf(ce.fakeCause)
-}
-
-func TestExtractCauserErrorWithCause(t *testing.T) {
-
+func TestExtractErrorWithCause(t *testing.T) {
 	entry := logrus.NewEntry(nil)
+	entry.Data["err"] = errors.Wrap(io.EOF,"foo bar baz")
 
-	entry.Data["err"] = CauserError{fakeCause: "fbb cause", error: fmt.Errorf("foo bar baz")}
-
-	cause := extractError(entry)
-	if cause.Error() != "fbb cause" {
-		t.Fatalf("Expected error as string to be 'fbb cause', but was instead: %q", cause)
+	err := extractError(entry)
+	expected := "foo bar baz: EOF"
+	if got := err.Error(); got != expected {
+		t.Fatalf("got %q, wanted %q", got, expected)
 	}
 }
 
