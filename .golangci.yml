@@ -28,7 +28,7 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - goconst # Don't run on test files because they may often repeate the same string
+        - goconst # Don't run on test files because they may often repeat the same string
 
 linters-settings:
   misspell:
