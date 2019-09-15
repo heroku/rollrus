@@ -1,2 +1,4 @@
-.tools/
-coverage.*
+go-analysis
+/.tools/
+/.circleci/.processed.yml
+coverage.out

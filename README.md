@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/heroku/rollrus.svg?branch=master)](https://travis-ci.org/heroku/rollrus)&nbsp;[![GoDoc](https://godoc.org/github.com/heroku/rollrus?status.svg)](https://godoc.org/github.com/heroku/rollrus)
+[![CircleCI](https://circleci.com/gh/heroku/rollrus.svg?style=svg)](https://circleci.com/gh/heroku/rollrus)&nbsp;[![GoDoc](https://godoc.org/github.com/heroku/rollrus?status.svg)](https://godoc.org/github.com/heroku/rollrus)
 
 # What
 
