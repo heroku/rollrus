@@ -13,7 +13,6 @@ var defaultTriggerLevels = []logrus.Level{
 	logrus.PanicLevel,
 }
 
-
 // wellKnownErrorFields are the names of the fields to be checked for values of
 // type `error`, in priority order.
 var wellKnownErrorFields = []string{
@@ -52,7 +51,6 @@ func setupLogging(token, env string, levels []logrus.Level) {
 		logrus.AddHook(NewHookForLevels(token, env, levels))
 	}
 }
-
 
 // ReportPanic attempts to report the panic to Rollbar using the provided
 // client and then re-panic. If it can't report the panic it will print an

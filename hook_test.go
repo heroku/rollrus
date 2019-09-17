@@ -91,7 +91,7 @@ func TestExtractError(t *testing.T) {
 
 func TestExtractErrorWithCause(t *testing.T) {
 	entry := logrus.NewEntry(nil)
-	entry.Data["err"] = errors.Wrap(io.EOF,"foo bar baz")
+	entry.Data["err"] = errors.Wrap(io.EOF, "foo bar baz")
 
 	err := extractError(entry)
 	expected := "foo bar baz: EOF"
