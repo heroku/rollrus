@@ -37,7 +37,7 @@ func WithIgnoredErrors(errors ...error) OptionFunc {
 }
 
 // WithIgnoreErrorFunc is an OptionFunc that receives the error that is about
-// to be logged and returns true/false if it wants to fire a rollbar alert for.
+// to be logged and returns true/false if it wants to fire a Rollbar alert for.
 func WithIgnoreErrorFunc(fn func(error) bool) OptionFunc {
 	return func(h *Hook) {
 		h.ignoreErrorFunc = fn
@@ -45,8 +45,8 @@ func WithIgnoreErrorFunc(fn func(error) bool) OptionFunc {
 }
 
 // WithIgnoreFunc is an OptionFunc that receives the error and custom fields that are about
-// to be logged and returns true/false if it wants to fire a rollbar alert for.
-func WithIgnoreFunc(fn func(err error, fields map[string]string) bool) OptionFunc {
+// to be logged and returns true/false if it wants to fire a Rollbar alert for.
+func WithIgnoreFunc(fn func(err error, fields map[string]interface{}) bool) OptionFunc {
 	return func(h *Hook) {
 		h.ignoreFunc = fn
 	}

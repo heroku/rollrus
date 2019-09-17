@@ -2,9 +2,9 @@
 
 # What
 
-Rollrus is what happens when [Logrus](https://github.com/sirupsen/logrus) meets [Roll](https://github.com/stvp/roll).
+Rollrus is what happens when [Logrus](https://github.com/sirupsen/logrus) meets [Rollbar](github.com/rollbar/rollbar-go).
 
-When a .Error, .Fatal or .Panic logging function is called, report the details to rollbar via a Logrus hook.
+When a .Error, .Fatal or .Panic logging function is called, report the details to Rollbar via a Logrus hook.
 
 Delivery is synchronous to help ensure that logs are delivered.
 

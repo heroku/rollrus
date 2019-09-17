@@ -1,8 +1,10 @@
 package rollrus
 
 import (
+	"fmt"
+
+	"github.com/rollbar/rollbar-go"
 	"github.com/sirupsen/logrus"
-	"github.com/stvp/roll"
 )
 
 var defaultTriggerLevels = []logrus.Level{
@@ -10,6 +12,7 @@ var defaultTriggerLevels = []logrus.Level{
 	logrus.FatalLevel,
 	logrus.PanicLevel,
 }
+
 
 // wellKnownErrorFields are the names of the fields to be checked for values of
 // type `error`, in priority order.
@@ -29,7 +32,7 @@ func NewHook(token string, env string, opts ...OptionFunc) *Hook {
 	return h
 }
 
-// SetupLogging for use on Heroku. If token is not an empty string a rollbar
+// SetupLogging for use on Heroku. If token is not an empty string a Rollbar
 // hook is added with the environment set to env. The log formatter is set to a
 // TextFormatter with timestamps disabled.
 func SetupLogging(token, env string) {
@@ -50,10 +53,17 @@ func setupLogging(token, env string, levels []logrus.Level) {
 	}
 }
 
-// ReportPanic attempts to report the panic to rollbar if the token is set
+
+// ReportPanic attempts to report the panic to Rollbar using the provided
+// client and then re-panic. If it can't report the panic it will print an
+// error to stderr.
 func ReportPanic(token, env string) {
 	if token != "" {
-		h := &Hook{Client: roll.New(token, env)}
-		h.ReportPanic()
+		if p := recover(); p != nil {
+			defer panic(p)
+			r := rollbar.New(token, env, "", "", "")
+			r.ErrorWithLevel(rollbar.CRIT, fmt.Errorf("panic: %q", p))
+			r.Wait()
+		}
 	}
 }

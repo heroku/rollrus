@@ -2,23 +2,23 @@ package rollrus
 
 import (
 	"fmt"
-	"os"
+	"runtime"
+	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/rollbar/rollbar-go"
 	"github.com/sirupsen/logrus"
-	"github.com/stvp/roll"
 )
 
 var _ logrus.Hook = &Hook{} //assert that *Hook is a logrus.Hook
 
-// Hook is a wrapper for the rollbar Client and is usable as a logrus.Hook.
+// Hook is a wrapper for the Rollbar Client and is usable as a logrus.Hook.
 type Hook struct {
-	roll.Client
+	*rollbar.Client
 	triggers        []logrus.Level
 	ignoredErrors   []error
 	ignoreErrorFunc func(error) bool
-	ignoreFunc      func(error, map[string]string) bool
+	ignoreFunc      func(error, map[string]interface{}) bool
 
 	// only used for tests to verify whether or not a report happened.
 	reported bool
@@ -27,23 +27,11 @@ type Hook struct {
 // NewHookForLevels provided by the caller. Otherwise works like NewHook.
 func NewHookForLevels(token string, env string, levels []logrus.Level) *Hook {
 	return &Hook{
-		Client:          roll.New(token, env),
+		Client:          rollbar.NewSync(token, env, "", "", ""),
 		triggers:        levels,
 		ignoredErrors:   make([]error, 0),
 		ignoreErrorFunc: func(error) bool { return false },
-		ignoreFunc:      func(error, map[string]string) bool { return false },
-	}
-}
-
-// ReportPanic attempts to report the panic to rollbar using the provided
-// client and then re-panic. If it can't report the panic it will print an
-// error to stderr.
-func (r *Hook) ReportPanic() {
-	if p := recover(); p != nil {
-		if _, err := r.Client.Critical(fmt.Errorf("panic: %q", p), nil); err != nil {
-			fmt.Fprintf(os.Stderr, "reporting_panic=false err=%q\n", err)
-		}
-		panic(p)
+		ignoreFunc:      func(error, map[string]interface{}) bool { return false },
 	}
 }
 
@@ -58,7 +46,8 @@ func (r *Hook) Levels() []logrus.Level {
 // Fire the hook. This is called by Logrus for entries that match the levels
 // returned by Levels().
 func (r *Hook) Fire(entry *logrus.Entry) error {
-	trace, cause := extractError(entry)
+	err := extractError(entry)
+	cause := errorCause(err)
 	for _, ie := range r.ignoredErrors {
 		if ie == cause {
 			return nil
@@ -74,50 +63,52 @@ func (r *Hook) Fire(entry *logrus.Entry) error {
 		m["time"] = entry.Time.Format(time.RFC3339)
 	}
 
+	if _, exists := m["msg"]; !exists && entry.Message != "" {
+		m["msg"] = entry.Message
+	}
+
 	if r.ignoreFunc(cause, m) {
 		return nil
 	}
 
-	return r.report(entry, cause, m, trace)
+	r.report(entry, err, m)
+
+	return nil
 }
 
-func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]string, trace []uintptr) (err error) {
-	hasTrace := len(trace) > 0
+func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]interface{}) {
 	level := entry.Level
 
 	r.reported = true
 
 	switch {
-	case hasTrace && level == logrus.FatalLevel:
-		_, err = r.Client.CriticalStack(cause, trace, m)
-	case hasTrace && level == logrus.PanicLevel:
-		_, err = r.Client.CriticalStack(cause, trace, m)
-	case hasTrace && level == logrus.ErrorLevel:
-		_, err = r.Client.ErrorStack(cause, trace, m)
-	case hasTrace && level == logrus.WarnLevel:
-		_, err = r.Client.WarningStack(cause, trace, m)
 	case level == logrus.FatalLevel || level == logrus.PanicLevel:
-		_, err = r.Client.Critical(cause, m)
+		skip := framesToSkip(2)
+		r.Client.ErrorWithStackSkipWithExtras(rollbar.CRIT, cause, skip, m)
+		r.Client.Wait()
 	case level == logrus.ErrorLevel:
-		_, err = r.Client.Error(cause, m)
+		skip := framesToSkip(2)
+		r.Client.ErrorWithStackSkipWithExtras(rollbar.ERR, cause, skip, m)
 	case level == logrus.WarnLevel:
-		_, err = r.Client.Warning(cause, m)
+		skip := framesToSkip(2)
+		r.Client.ErrorWithStackSkipWithExtras(rollbar.WARN, cause, skip, m)
 	case level == logrus.InfoLevel:
-		_, err = r.Client.Info(entry.Message, m)
+		r.Client.MessageWithExtras(rollbar.INFO, entry.Message, m)
 	case level == logrus.DebugLevel:
-		_, err = r.Client.Debug(entry.Message, m)
+		r.Client.MessageWithExtras(rollbar.DEBUG, entry.Message, m)
 	}
-	return err
 }
 
-// convertFields converts from log.Fields to map[string]string so that we can
+// convertFields converts from log.Fields to map[string]interface{} so that we can
 // report extra fields to Rollbar
-func convertFields(fields logrus.Fields) map[string]string {
-	m := make(map[string]string)
+func convertFields(fields logrus.Fields) map[string]interface{} {
+	m := make(map[string]interface{})
 	for k, v := range fields {
 		switch t := v.(type) {
 		case time.Time:
 			m[k] = t.Format(time.RFC3339)
+		case error:
+			m[k] = t.Error()
 		default:
 			if s, ok := v.(fmt.Stringer); ok {
 				m[k] = s.String()
@@ -131,16 +122,9 @@ func convertFields(fields logrus.Fields) map[string]string {
 }
 
 // extractError attempts to extract an error from a well known field, err or error
-func extractError(entry *logrus.Entry) ([]uintptr, error) {
-	var trace []uintptr
-	fields := entry.Data
-
-	type stackTracer interface {
-		StackTrace() errors.StackTrace
-	}
-
+func extractError(entry *logrus.Entry) error {
 	for _, f := range wellKnownErrorFields {
-		e, ok := fields[f]
+		e, ok := entry.Data[f]
 		if !ok {
 			continue
 		}
@@ -149,24 +133,47 @@ func extractError(entry *logrus.Entry) ([]uintptr, error) {
 			continue
 		}
 
-		cause := errors.Cause(err)
-		if cause == nil {
-			cause = err
-		}
-		tracer, ok := err.(stackTracer)
-		if ok {
-			return copyStackTrace(tracer.StackTrace()), cause
-		}
-		return trace, cause
+		return err
 	}
 
 	// when no error found, default to the logged message.
-	return trace, fmt.Errorf(entry.Message)
+	return fmt.Errorf(entry.Message)
 }
 
-func copyStackTrace(trace errors.StackTrace) (out []uintptr) {
-	for _, frame := range trace {
-		out = append(out, uintptr(frame))
+// framesToSkip returns the number of caller frames to skip
+// to get a stack trace that excludes rollrus and logrus.
+func framesToSkip(rollrusSkip int) int {
+	// skip 1 to get out of this function
+	skip := rollrusSkip + 1
+
+	// to get out of logrus, the amount can vary
+	// depending on how the user calls the log functions
+	// figure it out dynamically by skipping until
+	// we're out of the logrus package
+	for i := skip; ; i++ {
+		_, file, _, ok := runtime.Caller(i)
+		if !ok || !strings.Contains(file, "github.com/sirupsen/logrus") {
+			skip = i
+			break
+		}
 	}
-	return
+
+	// rollbar-go is skipping too few frames (2)
+	// subtract 1 since we're currently working from a function
+	return skip + 2 - 1
+}
+
+func errorCause(err error) error {
+	type causer interface {
+		Cause() error
+	}
+
+	for err != nil {
+		cause, ok := err.(causer)
+		if !ok {
+			break
+		}
+		err = cause.Cause()
+	}
+	return err
 }
