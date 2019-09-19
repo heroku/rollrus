@@ -96,6 +96,8 @@ func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]interface{}
 		r.Client.MessageWithExtras(rollbar.INFO, entry.Message, m)
 	case level == logrus.DebugLevel:
 		r.Client.MessageWithExtras(rollbar.DEBUG, entry.Message, m)
+	case level == logrus.TraceLevel:
+		r.Client.MessageWithExtras(rollbar.DEBUG, entry.Message, m)
 	}
 }
 
