@@ -12,4 +12,4 @@ If the error includes a [`StackTrace`](https://godoc.org/github.com/pkg/errors#S
 
 # Usage
 
-Examples available in the [tests](https://github.com/heroku/rollrus/blob/master/rollrus_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).
+Examples available in the [tests](https://github.com/heroku/rollrus/blob/master/examples_test.go) or on [GoDoc](https://godoc.org/github.com/heroku/rollrus).
