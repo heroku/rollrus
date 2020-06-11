@@ -26,8 +26,11 @@ type Hook struct {
 
 // NewHookForLevels provided by the caller. Otherwise works like NewHook.
 func NewHookForLevels(token string, env string, levels []logrus.Level) *Hook {
+	client := rollbar.NewSync(token, env, "", "", "")
+	client.Transport = newBufferTransport(client.Transport, rollbar.DefaultBuffer)
+
 	return &Hook{
-		Client:          rollbar.NewSync(token, env, "", "", ""),
+		Client:          client,
 		triggers:        levels,
 		ignoredErrors:   make([]error, 0),
 		ignoreErrorFunc: func(error) bool { return false },
