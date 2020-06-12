@@ -92,7 +92,7 @@ func (t *bufferedTransport) run(cancel func()) {
 	for m := range t.queue {
 		switch {
 		case m.send != nil:
-			t.Transport.Send(m.send)
+			_ = t.Transport.Send(m.send)
 		case m.wait != nil:
 			close(m.wait)
 		case m.close:

@@ -70,7 +70,7 @@ func TestBufferedTransportWait(t *testing.T) {
 	transport.Wait()
 
 	for i := 0; i < 100; i++ {
-		transport.Send(data)
+		_ = transport.Send(data)
 		transport.Wait()
 	}
 
