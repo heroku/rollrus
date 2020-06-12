@@ -1,4 +1,4 @@
-package rollrus
+package transport
 
 import (
 	"context"
@@ -13,30 +13,31 @@ var (
 	errClosed     = errors.New("rollbar transport closed")
 )
 
-// bufferedTransport is an alternative to rollbar's AsyncTransport, providing
-// threadsafe and predictable built on top of the SyncTransport.
-type bufferedTransport struct {
-	queue chan transportOp
+// Buffered is an alternative to rollbar's AsyncTransport, providing
+// threadsafe and predictable message delivery built on top of the SyncTransport.
+type Buffered struct {
+	queue chan op
 	once  sync.Once
 	ctx   context.Context
 
 	rollbar.Transport
 }
 
-// transportOp represents an operation queued for transport. It is only valid
+// op represents an operation queued for transport. It is only valid
 // to set a single field in the struct to represent the operation that should
 // be performed.
-type transportOp struct {
+type op struct {
 	send  map[string]interface{}
 	wait  chan struct{}
 	close bool
 }
 
-func newBufferTransport(inner rollbar.Transport, bufSize int) *bufferedTransport {
+// NewBuffered wraps the provided transport for async delivery.
+func NewBuffered(inner rollbar.Transport, bufSize int) *Buffered {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	t := &bufferedTransport{
-		queue:     make(chan transportOp, bufSize),
+	t := &Buffered{
+		queue:     make(chan op, bufSize),
 		ctx:       ctx,
 		Transport: inner,
 	}
@@ -48,9 +49,9 @@ func newBufferTransport(inner rollbar.Transport, bufSize int) *bufferedTransport
 
 // Send enqueues delivery of the message body to Rollbar without waiting for
 // the result. If the buffer is full, it will immediately return an error.
-func (t *bufferedTransport) Send(body map[string]interface{}) error {
+func (t *Buffered) Send(body map[string]interface{}) error {
 	select {
-	case t.queue <- transportOp{send: body}:
+	case t.queue <- op{send: body}:
 		return nil
 	case <-t.ctx.Done():
 		return errClosed
@@ -61,10 +62,10 @@ func (t *bufferedTransport) Send(body map[string]interface{}) error {
 
 // Wait blocks until all messages buffered before calling Wait are
 // delivered.
-func (t *bufferedTransport) Wait() {
+func (t *Buffered) Wait() {
 	done := make(chan struct{})
 	select {
-	case t.queue <- transportOp{wait: done}:
+	case t.queue <- op{wait: done}:
 	case <-t.ctx.Done():
 		return
 	}
@@ -77,16 +78,16 @@ func (t *bufferedTransport) Wait() {
 
 // Close shuts down the transport and waits for queued messages to be
 // delivered.
-func (t *bufferedTransport) Close() error {
+func (t *Buffered) Close() error {
 	t.once.Do(func() {
-		t.queue <- transportOp{close: true}
+		t.queue <- op{close: true}
 	})
 
 	<-t.ctx.Done()
 	return nil
 }
 
-func (t *bufferedTransport) run(cancel func()) {
+func (t *Buffered) run(cancel func()) {
 	defer cancel()
 
 	for m := range t.queue {

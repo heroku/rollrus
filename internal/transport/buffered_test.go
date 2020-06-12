@@ -1,4 +1,4 @@
-package rollrus
+package transport
 
 import (
 	"net/http"
@@ -13,7 +13,7 @@ func TestBufferedTransportSend(t *testing.T) {
 	inner := &testTransport{
 		sendHook: make(chan map[string]interface{}),
 	}
-	transport := newBufferTransport(inner, 1)
+	transport := NewBuffered(inner, 1)
 	data := map[string]interface{}{"a": "b"}
 
 	if err := transport.Send(data); err != nil {
@@ -62,7 +62,7 @@ func TestBufferedTransportSend(t *testing.T) {
 
 func TestBufferedTransportWait(t *testing.T) {
 	inner := &testTransport{}
-	transport := newBufferTransport(inner, 1)
+	transport := NewBuffered(inner, 1)
 	data := map[string]interface{}{"a": "b"}
 
 	// Wait returns immediately when nothing is queued
@@ -109,7 +109,7 @@ func TestBufferedTransportRace(t *testing.T) {
 	sync := rollbar.NewSyncTransport("token", srv.URL)
 	sync.SetLogger(&rollbar.SilentClientLogger{})
 
-	transport := newBufferTransport(sync, 1)
+	transport := NewBuffered(sync, 1)
 	body := map[string]interface{}{
 		"hello": "world",
 	}
