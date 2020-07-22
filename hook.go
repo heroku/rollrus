@@ -1,6 +1,7 @@
 package rollrus
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
@@ -19,6 +20,7 @@ type Hook struct {
 	*rollbar.Client
 	triggers        []logrus.Level
 	ignoredErrors   []error
+	setPerson       bool
 	ignoreErrorFunc func(error) bool
 	ignoreFunc      func(error, map[string]interface{}) bool
 
@@ -86,24 +88,47 @@ func (r *Hook) report(entry *logrus.Entry, cause error, m map[string]interface{}
 
 	r.reported = true
 
+	ctx := context.TODO()
+
+	if r.setPerson {
+		userID, userName, userEmail := "", "", ""
+
+		if userIDInterface, exists := m["user_id"]; !exists {
+			userID = fmt.Sprint(userIDInterface)
+		}
+
+		if userIDInterface, exists := m["user_name"]; !exists {
+			userName = fmt.Sprint(userIDInterface)
+		}
+
+		if userIDInterface, exists := m["user_email"]; !exists {
+			userEmail = fmt.Sprint(userIDInterface)
+		}
+
+		if userID != "" {
+			ctx = rollbar.NewPersonContext(ctx, &rollbar.Person{Id: userID, Username: userName, Email: userEmail})
+		}
+	}
+
 	switch {
 	case level == logrus.FatalLevel || level == logrus.PanicLevel:
 		skip := framesToSkip(2)
-		r.Client.ErrorWithStackSkipWithExtras(rollbar.CRIT, cause, skip, m)
+		r.Client.ErrorWithStackSkipWithExtrasAndContext(ctx, rollbar.CRIT, cause, skip, m)
 		r.Client.Wait()
 	case level == logrus.ErrorLevel:
 		skip := framesToSkip(2)
-		r.Client.ErrorWithStackSkipWithExtras(rollbar.ERR, cause, skip, m)
+		r.Client.ErrorWithStackSkipWithExtrasAndContext(ctx, rollbar.ERR, cause, skip, m)
 	case level == logrus.WarnLevel:
 		skip := framesToSkip(2)
-		r.Client.ErrorWithStackSkipWithExtras(rollbar.WARN, cause, skip, m)
+		r.Client.ErrorWithStackSkipWithExtrasAndContext(ctx, rollbar.WARN, cause, skip, m)
 	case level == logrus.InfoLevel:
-		r.Client.MessageWithExtras(rollbar.INFO, entry.Message, m)
+		r.Client.MessageWithExtrasAndContext(ctx, rollbar.INFO, entry.Message, m)
 	case level == logrus.DebugLevel:
-		r.Client.MessageWithExtras(rollbar.DEBUG, entry.Message, m)
+		r.Client.MessageWithExtrasAndContext(ctx, rollbar.DEBUG, entry.Message, m)
 	case level == logrus.TraceLevel:
-		r.Client.MessageWithExtras(rollbar.DEBUG, entry.Message, m)
+		r.Client.MessageWithExtrasAndContext(ctx, rollbar.DEBUG, entry.Message, m)
 	}
+
 }
 
 // convertFields converts from log.Fields to map[string]interface{} so that we can

@@ -51,3 +51,11 @@ func WithIgnoreFunc(fn func(err error, fields map[string]interface{}) bool) Opti
 		h.ignoreFunc = fn
 	}
 }
+
+// WithPersonFunc is an OptionFunc that will set the person in the Rollbar alert
+// using the special error fields user_id, user_name and user_email
+func WithPersonFunc(setPerson bool) OptionFunc {
+	return func(h *Hook) {
+		h.setPerson = setPerson
+	}
+}
