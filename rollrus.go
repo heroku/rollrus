@@ -31,6 +31,24 @@ func NewHook(token string, env string, opts ...OptionFunc) *Hook {
 	return h
 }
 
+// NewHookWithCustomRollbarClient creates a hook that is intended for use with your own rollbar.Client
+// instance. Uses the default report levels defined in wellKnownErrorFields.
+func NewHookWithCustomRollbarClient(client *rollbar.Client, opts ...OptionFunc) *Hook {
+	h := &Hook{
+		Client:          client,
+		triggers:        defaultTriggerLevels,
+		ignoredErrors:   make([]error, 0),
+		ignoreErrorFunc: func(error) bool { return false },
+		ignoreFunc:      func(error, map[string]interface{}) bool { return false },
+	}
+
+	for _, o := range opts {
+		o(h)
+	}
+
+	return h
+}
+
 // SetupLogging for use on Heroku. If token is not an empty string a Rollbar
 // hook is added with the environment set to env. The log formatter is set to a
 // TextFormatter with timestamps disabled.
